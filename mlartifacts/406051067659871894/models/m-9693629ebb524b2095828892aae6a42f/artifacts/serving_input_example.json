@@ -1,0 +1,26 @@
+{
+  "dataframe_split": {
+    "columns": [
+      "median_income",
+      "housing_median_age",
+      "avg_rooms",
+      "avg_bedrooms",
+      "population",
+      "avg_occupancy",
+      "latitude",
+      "longitude"
+    ],
+    "data": [
+      [
+        1.6812,
+        25.0,
+        4.192200557103064,
+        1.0222841225626742,
+        1392.0,
+        3.877437325905293,
+        36.06,
+        -119.01
+      ]
+    ]
+  }
+}

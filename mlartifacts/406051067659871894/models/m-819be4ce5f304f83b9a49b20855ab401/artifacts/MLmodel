@@ -1,0 +1,39 @@
+artifact_path: mlflow-artifacts:/406051067659871894/models/m-819be4ce5f304f83b9a49b20855ab401/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.3
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.1
+is_signature_from_type_hint: false
+mlflow_version: 3.1.4
+model_id: m-819be4ce5f304f83b9a49b20855ab401
+model_size_bytes: 1415
+model_uuid: m-819be4ce5f304f83b9a49b20855ab401
+prompts: null
+run_id: b7d60b9b61234739b232c1c2fb435e36
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "median_income", "required": true}, {"type":
+    "double", "name": "housing_median_age", "required": true}, {"type": "double",
+    "name": "avg_rooms", "required": true}, {"type": "double", "name": "avg_bedrooms",
+    "required": true}, {"type": "double", "name": "population", "required": true},
+    {"type": "double", "name": "avg_occupancy", "required": true}, {"type": "double",
+    "name": "latitude", "required": true}, {"type": "double", "name": "longitude",
+    "required": true}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "float64", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2025-07-31 19:36:44.555677'
