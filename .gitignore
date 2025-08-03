@@ -8,5 +8,3 @@ __pycache__/
 mlruns/
 mlflow-env/
 outputs/
-data/
-
