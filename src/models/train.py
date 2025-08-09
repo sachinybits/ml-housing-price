@@ -4,6 +4,7 @@ import seaborn as sns
 import shap
 import os
 import mlflow
+import psutil
 import uuid
 from datetime import datetime
 import mlflow.sklearn
@@ -19,12 +20,15 @@ from mlflow.tracking import MlflowClient
 from prometheus_client import start_http_server, Summary
 import time
 
+print("Starting the experiment \n")
+
 # Start Prometheus HTTP server
 start_http_server(8001)
-print("Prometheus metrics server started on port 8001")
+print("Prometheus metrics server started on port 8001 \n")
 TRAIN_DURATION = Summary('train_duration_seconds', 'Time spent training model')
 
 # 1. Define Schema with Pydantic
+print("Define Schema with Pydantic\n")
 class HousingRecord(BaseModel):
     median_income: confloat(ge=0)
     housing_median_age: confloat(ge=0)
@@ -38,7 +42,7 @@ class HousingRecord(BaseModel):
 
 # 2. Load Dataset
 data_path = "data/raw/california.csv"
-print(f"\nStep 1: Loading dataset from: {data_path}")
+print(f"\nLoading dataset from: {data_path}")
 df = pd.read_csv(data_path)
 
 # 3. Rename Columns to Match Schema
@@ -55,6 +59,7 @@ df.rename(columns={
 }, inplace=True)
 
 # 4. Validate Data Using Pydantic
+print("Validating Data Using Pydantic..\n")
 for idx, row in df.iterrows():
     try:
         HousingRecord(**row.to_dict())
@@ -67,6 +72,8 @@ y = df["median_house_value"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # 6. Define Models and Hyperparameters
+print("Defining Models LinearRegression and DecisionTreeRegressor with Hyperparameters..\n")
+
 models = {
     "LinearRegression": (LinearRegression(), {}),
     "DecisionTree": (DecisionTreeRegressor(random_state=42), {
@@ -76,6 +83,8 @@ models = {
 }
 
 # 7. Set up MLflow
+print("Setting up MLflow tracking..\n")
+
 mlflow.set_tracking_uri("http://localhost:5000")
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 unique_experiment_name = f"housing-price-prediction-{timestamp}"
@@ -85,6 +94,7 @@ mlflow.autolog()
 model_metrics = []
 
 #  8. Train, Evaluate and Log Models 
+print("\nTrain, Evaluate and Log Models..\n")
 @TRAIN_DURATION.time()
 def train_and_log():
     for name, (model, param_grid) in models.items():
@@ -107,8 +117,10 @@ def train_and_log():
             signature = infer_signature(X_test, preds)
             mlflow.sklearn.log_model(model, "model", signature=signature)
 
-            model_metrics.append({"model": name, "mse": mse, "r2": r2})
+            model_metrics.append({"model": name, "r2": r2, "run_id": run.info.run_id})
 
+
+            
             # SHAP Plot
             with tempfile.TemporaryDirectory() as tmp:
                 try:
@@ -154,16 +166,39 @@ def train_and_log():
 
 train_and_log()
 
-#  9. Comparison Plot
+# 9. Determine Best Model and Register
 metrics_df = pd.DataFrame(model_metrics)
+
+print("\nColumns in metrics_df:", metrics_df.columns.tolist())
+print(metrics_df.head())
+
+
+best_model_info = metrics_df.loc[metrics_df['r2'].idxmax()]
+best_run_id = best_model_info['run_id']
+best_model_name = best_model_info['model']
+best_r2_score = best_model_info['r2']
+
+print(f"\nBest model found: {best_model_name} with R2 score: {best_r2_score:.4f}")
+
+# Register the best model to the MLflow Model Registry
+model_uri = f"runs:/{best_run_id}/model"
+model_name_for_registry = "CaliforniaHousingModel"
+
+print(f"\nRegistering model '{best_model_name}' as '{model_name_for_registry}' in MLflow Model Registry...")
+
+# Registering the model using the model URI
+mlflow.register_model(
+    model_uri=model_uri,
+    name=model_name_for_registry
+)
+
+
+# 10. Comparison Plot
 fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
 sns.barplot(data=metrics_df, x="model", y="r2", ax=axes[0], palette="crest")
-axes[0].set_title("R² Score Comparison")
+axes[0].set_title("R² Score Comparison\n")
 axes[0].set_ylim(0, 1)
-
-sns.barplot(data=metrics_df, x="model", y="mse", ax=axes[1], palette="flare")
-axes[1].set_title("Mean Squared Error Comparison")
 
 plt.tight_layout()
 with tempfile.TemporaryDirectory() as tmp:
@@ -172,5 +207,8 @@ with tempfile.TemporaryDirectory() as tmp:
     mlflow.log_artifact(plot_path, artifact_path="plots")
     plt.close()
 
-print("All models trained and visualized. Prometheus running at :8001/metrics")
+print("\nAll models trained and visualized. Prometheus running at :8001/metrics")
+
+
 time.sleep(240)
+
