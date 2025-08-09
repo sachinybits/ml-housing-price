@@ -5,8 +5,9 @@ import mlflow
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
+from prometheus_fastapi_instrumentator import Instrumentator
 
-# === Configure Logging ===
+# Configure Logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
@@ -18,23 +19,30 @@ if logger.hasHandlers():
     logger.handlers.clear()
 logger.addHandler(stream_handler)
 
-# === Set and Log MLflow Tracking URI ===
+# Set and Log MLflow Tracking URI
 tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "http://localhost:5000")
 mlflow.set_tracking_uri(tracking_uri)
-logger.info(f"🚀 Using MLflow tracking URI: {tracking_uri}")
+logger.info(f"Using MLflow tracking URI: {tracking_uri}")
 
 # === Load Registered Model ===
 model_name = "CaliforniaPriceModelBest"
 try:
     model = mlflow.pyfunc.load_model(model_uri=f"models:/{model_name}/latest")
-    logger.info(f"✅ Loaded model '{model_name}' from MLflow registry.")
+    logger.info(f"Loaded model '{model_name}' from MLflow registry.")
 except Exception as e:
-    logger.error(f"❌ Failed to load model: {e}")
+    logger.error(f"Failed to load model: {e}")
     raise
 
 # === FastAPI App ===
 app = FastAPI()
 
+#prothemus
+Instrumentator().instrument(app).expose(app)
+
+@app.get("/")
+def read_root():
+    return {"message": "ML housing model is alive!"}
+    
 # === Input Schema ===
 class HousingFeatures(BaseModel):
     median_income: float
@@ -49,12 +57,12 @@ class HousingFeatures(BaseModel):
 # === Prediction Endpoint ===
 @app.post("/predict")
 def predict(features: HousingFeatures):
-    logger.info("📥 Received prediction request.")
+    logger.info("Received prediction request.")
     try:
         data = pd.DataFrame([features.dict()])
         prediction = model.predict(data)
-        logger.info(f"✅ Prediction successful: {prediction[0]}")
+        logger.info(f"Prediction successful: {prediction[0]}")
         return {"predicted_house_value": prediction[0]}
     except Exception as e:
-        logger.exception("❌ Prediction failed.")
+        logger.exception("Prediction failed.")
         raise HTTPException(status_code=500, detail=str(e))
