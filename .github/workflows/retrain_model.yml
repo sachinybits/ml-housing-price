@@ -1,0 +1,25 @@
+name: Retrain Model on Data or Code Change
+
+on:
+  push:
+    paths:
+      - "data/**"   # trigger when data files change
+      - "src/**"    # or code changes
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install dvc[all] mlflow
+      - name: Pull DVC Data
+        run: dvc pull
+      - name: Run Training
+        run: python train.py
